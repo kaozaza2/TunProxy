@@ -1,0 +1,104 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 31
+    buildToolsVersion "31.0.0"
+
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+
+    defaultConfig {
+        applicationId "tun.proxy"
+        minSdkVersion 21
+        targetSdkVersion 31
+        versionCode 100270
+        versionName VERSION_NAME
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -fvisibility=hidden "
+                abiFilters 'armeabi-v7a','arm64-v8a', 'x86'
+                arguments "-DCMAKE_VERBOSE_MAKEFILE=1 -DANDROID_FUNCTION_LEVEL_LINKING=ON"
+            }
+        }
+        splits {
+            abi {
+                enable true
+                reset()
+                include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+                universalApk true
+            }
+        }
+    }
+    signingConfigs {
+        debug {
+            // @See gradle.properties
+            storeFile file(productKeyStore)
+            keyAlias productKeyAlias
+            storePassword productKeyStorePassword
+            keyPassword productKeyAliasPassword
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+        }
+    }
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    lintOptions {
+        abortOnError false
+    }
+    externalNativeBuild {
+        cmake {
+            path file('CMakeLists.txt')
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    ndkVersion = '22.1.7171670'
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            if (variant.buildType.name == "debug") {
+                def abi = output.getFilter(com.android.build.OutputFile.ABI)
+                outputFileName = new File("tunproxy-app_debug" + "_" + (abi ? abi : "universal") + ".apk")
+            } else if (variant.buildType.name == "release") {
+                def abi = output.getFilter(com.android.build.OutputFile.ABI)
+                outputFileName = new File("tunproxy-app_release" + "_" + (abi ? abi : "universal") + ".apk")
+            }
+        }
+    }
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation 'androidx.preference:preference:1.1.0'
+    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation 'androidx.vectordrawable:vectordrawable:1.0.0'
+    implementation 'androidx.legacy:legacy-support-v13:1.0.0'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation 'androidx.navigation:navigation-fragment:2.0.0'
+    implementation 'androidx.navigation:navigation-ui:2.0.0'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+}

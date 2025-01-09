@@ -1,0 +1,69 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+      - 'github-releases/**'
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Build APKs
+        shell: bash {0}
+        run: |
+          echo "Building APKs"
+          if ! ./gradlew assembleDebug; then
+            echo "Build failed."
+            exit 1
+          fi
+
+      - name: Attach universal APK file
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunproxy-app_debug_universal
+          path: |
+            ./app/build/outputs/apk/debug/tunproxy-app_debug_universal.apk
+            ./app/build/outputs/apk/debug/output-metadata.json
+
+      - name: Attach arm64-v8a APK file
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunproxy-app_debug_arm64-v8a
+          path: |
+            ./app/build/outputs/apk/debug/tunproxy-app_debug_arm64-v8a.apk
+            ./app/build/outputs/apk/debug/output-metadata.json
+
+      - name: Attach armeabi-v7a APK file
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunproxy-app_debug_armeabi-v7a
+          path: |
+            ./app/build/outputs/apk/debug/tunproxy-app_debug_armeabi-v7a.apk
+            ./app/build/outputs/apk/debug/output-metadata.json
+
+      - name: Attach x86_64 APK file
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunproxy-app_debug_x86_64
+          path: |
+            ./app/build/outputs/apk/debug/tunproxy-app_debug_x86_64.apk
+            ./app/build/outputs/apk/debug/output-metadata.json
+
+      - name: Attach x86 APK file
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunproxy-app_debug_x86
+          path: |
+            ./app/build/outputs/apk/debug/tunproxy-app_debug_x86.apk
+            ./app/build/outputs/apk/debug/output-metadata.json
