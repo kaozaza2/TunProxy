@@ -1,4 +1,4 @@
-package tun.utils;
+package tun.proxy.common.utils;
 
 /*
     This file is part of NetGuard.
@@ -19,19 +19,22 @@ package tun.utils;
     Copyright 2015-2017 by Marcel Bokhorst (M66B)
 */
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.Network;
 import android.os.Build;
 import android.text.TextUtils;
+import android.util.Log;
 
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Util {
-    private static native String jni_getprop(String name);
+public class AddressUtils {
+    private static final String TAG = "TunProxy:Util";
 
     public static List<String> getDefaultDNS(Context context) {
         String dns1 = null;
@@ -43,22 +46,64 @@ public class Util {
                 LinkProperties lp = cm.getLinkProperties(an);
                 if (lp != null) {
                     List<InetAddress> dns = lp.getDnsServers();
-                    if (dns != null) {
-                        if (dns.size() > 0)
-                            dns1 = dns.get(0).getHostAddress();
-                        if (dns.size() > 1)
-                            dns2 = dns.get(1).getHostAddress();
-                    }
+                    if (!dns.isEmpty()) dns1 = dns.get(0).getHostAddress();
+                    if (dns.size() > 1) dns2 = dns.get(1).getHostAddress();
                 }
             }
         } else {
-            dns1 = jni_getprop("net.dns1");
-            dns2 = jni_getprop("net.dns2");
+            dns1 = getSystemProperty("net.dns1");
+            dns2 = getSystemProperty("net.dns2");
         }
 
         List<String> listDns = new ArrayList<>();
         listDns.add(TextUtils.isEmpty(dns1) ? "8.8.8.8" : dns1);
         listDns.add(TextUtils.isEmpty(dns2) ? "8.8.4.4" : dns2);
         return listDns;
+    }
+
+    public static boolean isValidIPv4Address(String ipAddress) {
+        String host = ipAddress;
+
+        if (ipAddress.contains(":")) {
+            String[] split = ipAddress.split(":");
+            if (split.length != 2) {
+                return false;
+            }
+            host = split[0];
+            int port = Integer.parseInt(split[1]);
+            if (port <= 0 || port > 65535) {
+                return false;
+            }
+        }
+
+        String[] part = host.split("\\.");
+
+        if (part.length != 4)
+            return false;
+
+        for (String p : part) {
+            try {
+                int num = Integer.parseInt(p);
+
+                if (num < 0 || num > 255)
+                    return false;
+            } catch (NumberFormatException w) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static String getSystemProperty(String propertyName) {
+        try {
+            @SuppressLint("PrivateApi")
+            Class<?> cls = Class.forName("android.os.SystemProperties");
+            Method method = cls.getMethod("get", String.class);
+            return (String) method.invoke(cls, propertyName);
+        } catch (Exception e) {
+            Log.d(TAG, "Cannot read system property: " + propertyName, e);
+            return null;
+        }
     }
 }

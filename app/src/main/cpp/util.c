@@ -37,12 +37,6 @@ int compare_u32(uint32_t s1, uint32_t s2) {
         return 1;
 }
 
-int sdk_int(JNIEnv *env) {
-    jclass clsVersion = jniFindClass(env, "android/os/Build$VERSION");
-    jfieldID fid = (*env)->GetStaticFieldID(env, clsVersion, "SDK_INT", "I");
-    return (*env)->GetStaticIntField(env, clsVersion, fid);
-}
-
 void log_android(int prio, const char *fmt, ...) {
 
 }
@@ -58,19 +52,6 @@ void hex2bytes(const char *hex, uint8_t *buffer) {
     size_t len = strlen(hex);
     for (int i = 0; i < len; i += 2)
         buffer[i / 2] = (char2nible(hex[i]) << 4) | char2nible(hex[i + 1]);
-}
-
-char *trim(char *str) {
-    while (isspace(*str))
-        str++;
-    if (*str == 0)
-        return str;
-
-    char *end = str + strlen(str) - 1;
-    while (end > str && isspace(*end))
-        end--;
-    *(end + 1) = 0;
-    return str;
 }
 
 const char *strstate(const int state) {
@@ -102,22 +83,6 @@ const char *strstate(const int state) {
     }
 }
 
-char *hex(const u_int8_t *data, const size_t len) {
-    char hex_str[] = "0123456789ABCDEF";
-
-    char *hexout;
-    hexout = (char *) malloc(len * 3 + 1); // TODO free
-
-    for (size_t i = 0; i < len; i++) {
-        hexout[i * 3 + 0] = hex_str[(data[i] >> 4) & 0x0F];
-        hexout[i * 3 + 1] = hex_str[(data[i]) & 0x0F];
-        hexout[i * 3 + 2] = ' ';
-    }
-    hexout[len * 3] = 0;
-
-    return hexout;
-}
-
 int32_t get_local_port(const int sock) {
     struct sockaddr_in sin;
     socklen_t len = sizeof(sin);
@@ -147,10 +112,6 @@ int is_event(int fd, short event) {
 
 int is_readable(int fd) {
     return is_event(fd, POLLIN);
-}
-
-int is_writable(int fd) {
-    return is_event(fd, POLLOUT);
 }
 
 long long get_ms() {

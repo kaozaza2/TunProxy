@@ -1,4 +1,3 @@
-
 #include "tun2http.h"
 
 JavaVM *jvm = NULL;
@@ -66,14 +65,15 @@ Java_tun_proxy_service_Tun2HttpVpnService_jni_1init(JNIEnv *env, jobject instanc
         for (int i = 0; i < 2; i++) {
             int flags = fcntl(pipefds[i], F_GETFL, 0);
             if (flags < 0 || fcntl(pipefds[i], F_SETFL, flags | O_NONBLOCK) < 0)
-                log_android(ANDROID_LOG_ERROR, "fcntl pipefds[%d] O_NONBLOCK error %d: %s",
-                            i, errno, strerror(errno));
+                log_android(ANDROID_LOG_ERROR, "fcntl pipefds[%d] O_NONBLOCK error %d: %s", i,
+                            errno, strerror(errno));
         }
 }
 
 JNIEXPORT void JNICALL
-Java_tun_proxy_service_Tun2HttpVpnService_jni_1start(
-        JNIEnv *env, jobject instance, jint tun, jboolean fwd53, jint rcode, jstring proxyIp, jint proxyPort) {
+Java_tun_proxy_service_Tun2HttpVpnService_jni_1start(JNIEnv *env, jobject instance, jint tun,
+                                                     jboolean fwd53, jint rcode, jstring proxyIp,
+                                                     jint proxyPort) {
 
     const char *proxy_ip = (*env)->GetStringUTFChars(env, proxyIp, 0);
 
@@ -82,8 +82,8 @@ Java_tun_proxy_service_Tun2HttpVpnService_jni_1start(
     // Set blocking
     int flags = fcntl(tun, F_GETFL, 0);
     if (flags < 0 || fcntl(tun, F_SETFL, flags & ~O_NONBLOCK) < 0)
-        log_android(ANDROID_LOG_ERROR, "fcntl tun ~O_NONBLOCK error %d: %s",
-                    errno, strerror(errno));
+        log_android(ANDROID_LOG_ERROR, "fcntl tun ~O_NONBLOCK error %d: %s", errno,
+                    strerror(errno));
 
     if (thread_id && pthread_kill(thread_id, 0) == 0)
         log_android(ANDROID_LOG_ERROR, "Already running thread %x", thread_id);
@@ -117,8 +117,7 @@ Java_tun_proxy_service_Tun2HttpVpnService_jni_1start(
 }
 
 JNIEXPORT void JNICALL
-Java_tun_proxy_service_Tun2HttpVpnService_jni_1stop(
-        JNIEnv *env, jobject instance, jint tun) {
+Java_tun_proxy_service_Tun2HttpVpnService_jni_1stop(JNIEnv *env, jobject instance, jint tun) {
     pthread_t t = thread_id;
     log_android(ANDROID_LOG_WARN, "Stop tun %d  thread %x", tun, t);
     if (t && pthread_kill(t, 0) == 0) {
@@ -159,20 +158,6 @@ Java_tun_proxy_service_Tun2HttpVpnService_jni_1done(JNIEnv *env, jobject instanc
             log_android(ANDROID_LOG_ERROR, "Close pipe error %d: %s", errno, strerror(errno));
 }
 
-// JNI Util
-
-JNIEXPORT jstring JNICALL
-Java_tun_utils_Util_jni_1getprop(JNIEnv *env, jclass type, jstring name_) {
-    const char *name = (*env)->GetStringUTFChars(env, name_, 0);
-
-    char value[PROP_VALUE_MAX + 1] = "";
-    __system_property_get(name, value);
-
-    (*env)->ReleaseStringUTFChars(env, name_, name);
-
-    return (*env)->NewStringUTF(env, value);
-}
-
 static jmethodID midProtect = NULL;
 
 
@@ -181,8 +166,8 @@ int protect_socket(const struct arguments *args, int socket) {
     if (midProtect == NULL)
         midProtect = jniGetMethodID(args->env, cls, "protect", "(I)Z");
 
-    jboolean isProtected = (*args->env)->CallBooleanMethod(
-            args->env, args->instance, midProtect, socket);
+    jboolean isProtected = (*args->env)->CallBooleanMethod(args->env, args->instance, midProtect,
+                                                           socket);
     jniCheckException(args->env);
 
     if (!isProtected) {
@@ -193,23 +178,6 @@ int protect_socket(const struct arguments *args, int socket) {
     (*args->env)->DeleteLocalRef(args->env, cls);
 
     return 0;
-}
-
-
-jobject jniGlobalRef(JNIEnv *env, jobject cls) {
-    jobject gcls = (*env)->NewGlobalRef(env, cls);
-    if (gcls == NULL)
-        log_android(ANDROID_LOG_ERROR, "Global ref failed (out of memory?)");
-    return gcls;
-}
-
-jclass jniFindClass(JNIEnv *env, const char *name) {
-    jclass cls = (*env)->FindClass(env, name);
-    if (cls == NULL)
-        log_android(ANDROID_LOG_ERROR, "Class %s not found", name);
-    else
-        jniCheckException(env);
-    return cls;
 }
 
 jmethodID jniGetMethodID(JNIEnv *env, jclass cls, const char *name, const char *signature) {

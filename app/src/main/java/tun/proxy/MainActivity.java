@@ -1,8 +1,6 @@
 package tun.proxy;
 
-import android.net.VpnService;
-import android.os.Bundle;
-
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -10,6 +8,16 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.VpnService;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.text.TextUtils;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.widget.Button;
+import android.widget.EditText;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -18,23 +26,11 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
-import android.text.TextUtils;
-import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.Button;
-import android.widget.EditText;
-
 import tun.proxy.service.Tun2HttpVpnService;
-import tun.utils.IPUtil;
+import tun.proxy.common.utils.AddressUtils;
 
-public class MainActivity extends AppCompatActivity implements
-        PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
+public class MainActivity extends AppCompatActivity implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
     public static final int REQUEST_VPN = 1;
-    public static final int REQUEST_CERT = 2;
 
     Button start;
     Button stop;
@@ -42,6 +38,16 @@ public class MainActivity extends AppCompatActivity implements
     Handler statusHandler = new Handler(Looper.getMainLooper());
 
     private Tun2HttpVpnService service;
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder binder) {
+            Tun2HttpVpnService.ServiceBinder serviceBinder = (Tun2HttpVpnService.ServiceBinder) binder;
+            service = serviceBinder.getService();
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            service = null;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,34 +60,22 @@ public class MainActivity extends AppCompatActivity implements
         stop = findViewById(R.id.stop);
         hostEditText = findViewById(R.id.host);
 
-        start.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startVpn();
-            }
-        });
-        stop.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                stopVpn();
-            }
-        });
+        start.setOnClickListener(v -> startVpn());
+        stop.setOnClickListener(v -> stopVpn());
         start.setEnabled(true);
         stop.setEnabled(false);
 
         loadHostPort();
 
     }
+
     @Override
     public boolean onPreferenceStartFragment(PreferenceFragmentCompat caller, Preference pref) {
         final Bundle args = pref.getExtras();
         final Fragment fragment = getSupportFragmentManager().getFragmentFactory().instantiate(getClassLoader(), pref.getFragment());
         fragment.setArguments(args);
         fragment.setTargetFragment(caller, 0);
-        getSupportFragmentManager().beginTransaction()
-            .replace(R.id.activity_settings, fragment)
-            .addToBackStack(null)
-            .commit();
+        getSupportFragmentManager().beginTransaction().replace(R.id.activity_settings, fragment).addToBackStack(null).commit();
         setTitle(pref.getTitle());
         return true;
     }
@@ -100,24 +94,22 @@ public class MainActivity extends AppCompatActivity implements
         return true;
     }
 
+    @SuppressLint("NonConstantResourceId")
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        switch (item.getItemId()) {
-            case R.id.action_activity_settings:
-                Intent intent = new android.content.Intent(this, SettingsActivity.class);
-                startActivity(intent);
-                break;
-            case R.id.action_show_about:
-                new AlertDialog.Builder(this)
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_activity_settings) {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
+        } else if (itemId == R.id.action_show_about) {
+            new AlertDialog.Builder(this)
                     .setTitle(getString(R.string.app_name) + getVersionName())
-                    .setMessage(R.string.app_name)
-                    .show();
-                break;
-            default:
-                return super.onOptionsItemSelected(item);
+                    .setMessage(R.string.app_name).show();
+        } else {
+            return super.onOptionsItemSelected(item);
         }
         return true;
     }
@@ -135,17 +127,6 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private ServiceConnection serviceConnection = new ServiceConnection() {
-        public void onServiceConnected(ComponentName className, IBinder binder) {
-            Tun2HttpVpnService.ServiceBinder serviceBinder = (Tun2HttpVpnService.ServiceBinder) binder;
-            service = serviceBinder.getService();
-        }
-
-        public void onServiceDisconnected(ComponentName className) {
-            service = null;
-        }
-    };
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -162,14 +143,6 @@ public class MainActivity extends AppCompatActivity implements
     boolean isRunning() {
         return service != null && service.isRunning();
     }
-
-    Runnable statusRunnable = new Runnable() {
-        @Override
-        public void run() {
-        updateStatus();
-        statusHandler.post(statusRunnable);
-        }
-    };
 
     @Override
     protected void onPause() {
@@ -206,7 +179,13 @@ public class MainActivity extends AppCompatActivity implements
         } else {
             onActivityResult(REQUEST_VPN, RESULT_OK, null);
         }
-    }
+    }    Runnable statusRunnable = new Runnable() {
+        @Override
+        public void run() {
+            updateStatus();
+            statusHandler.post(statusRunnable);
+        }
+    };
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -229,16 +208,17 @@ public class MainActivity extends AppCompatActivity implements
         if (TextUtils.isEmpty(proxyHost)) {
             return;
         }
-        hostEditText.setText(proxyHost + ":" + proxyPort);
+        String address = proxyHost + ":" + proxyPort;
+        hostEditText.setText(address);
     }
 
     private boolean parseAndSaveHostPort() {
         String hostPort = hostEditText.getText().toString();
-        if (!IPUtil.isValidIPv4Address(hostPort)) {
+        if (!AddressUtils.isValidIPv4Address(hostPort)) {
             hostEditText.setError(getString(R.string.enter_host));
             return false;
         }
-        String parts[] = hostPort.split(":");
+        String[] parts = hostPort.split(":");
         int port = 0;
         if (parts.length > 1) {
             try {
@@ -248,13 +228,12 @@ public class MainActivity extends AppCompatActivity implements
                 return false;
             }
         }
-        String[] ipParts = parts[0].split("\\.");
         String host = parts[0];
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor edit = prefs.edit();
         edit.putString(Tun2HttpVpnService.PREF_PROXY_HOST, host);
         edit.putInt(Tun2HttpVpnService.PREF_PROXY_PORT, port);
-        edit.commit();
+        edit.apply();
         return true;
     }
 }

@@ -2,7 +2,6 @@
 #include "tun2http.h"
 
 extern struct ng_session *ng_session;
-extern FILE *pcap_file;
 
 int get_icmp_timeout(const struct icmp_session *u, int sessions, int maxsessions) {
     int timeout = ICMP_TIMEOUT;

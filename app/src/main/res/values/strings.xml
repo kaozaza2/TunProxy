@@ -17,8 +17,8 @@
     <!-- Category -->
     <string name="search">Search</string>
 
-    <string name="pref_header_allowed_application_list">Allowed application list</string>
-    <string name="pref_header_disallowed_application_list">Disallowed application list</string>
+    <string name="pref_header_allowed_application_list">Allowed application list (%1$d)</string>
+    <string name="pref_header_disallowed_application_list">Disallowed application list (%1$d)</string>
     <string name="pref_dialog_clear_all_application_msg">Clear all selections of Allowed / Disallowed application list</string>
 
     <string name="pref_vpn_connection_mode">Allowed / Disallowed Application</string>

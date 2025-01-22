@@ -5,10 +5,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.VpnService;
-import androidx.preference.PreferenceManager;
 import android.util.Log;
-import tun.proxy.R;
 
+import androidx.preference.PreferenceManager;
+
+import tun.proxy.R;
 import tun.proxy.service.Tun2HttpVpnService;
 
 public class BootReceiver extends BroadcastReceiver {
